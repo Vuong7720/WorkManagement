@@ -6,7 +6,8 @@ import {
     Button,
     Input,
     Card,
-    Typography
+    Typography,
+    Select
 } from 'antd';
 import {
     PlusOutlined,
@@ -16,36 +17,64 @@ import {
 } from '@ant-design/icons';
 import { useTaskStore } from '../store/useTaskStore';
 import type { ITask } from '../types';
+import type { ColumnsType } from 'antd/es/table';
+import { AddTaskModal } from '../features/task/components/AddTaskModal';
+import { v4 as uuidv4 } from 'uuid';
 
 const { Title } = Typography;
 
 export const Tasks: React.FC = () => {
     // 1. Lấy dữ liệu và hành động từ Zustand Store
-    const { tasks } = useTaskStore();
+    const { tasks, addTask } = useTaskStore();
     const [searchText, setSearchText] = useState('');
 
+    const { updateTaskStatus } = useTaskStore();
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+
+    const handleCreateTask = (values: any) => {
+        const newTask: ITask = {
+            id: uuidv4(), // Tạo ID ngẫu nhiên
+            ...values,
+            status: 'TODO', // Mặc định khi tạo mới
+            assignees: []
+        };
+
+        addTask(newTask); // Lưu vào Store
+        setIsModalOpen(false); // Đóng Modal
+    };
+
     // 2. Định nghĩa các cột cho Table (Cấu hình của Ant Design)
-    const columns = [
+    const columns: ColumnsType<ITask> = [
         {
             title: 'Tiêu đề',
             dataIndex: 'title',
             key: 'title',
-            render: (text: string) => <a>{text}</a>,
+            render: (text) => <a>{text}</a>,
         },
         {
             title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',
-            render: (status: string) => {
-                let color = status === 'DONE' ? 'green' : status === 'IN_PROGRESS' ? 'blue' : 'volcano';
-                return <Tag color={color}>{status.replace('_', ' ')}</Tag>;
-            },
+            render: (status, record) => (
+                <Select
+                    value={status}
+                    style={{ width: 120 }}
+                    onChange={(newStatus) => updateTaskStatus(record.id, newStatus)} // Giao tiếp component qua Action
+                    options={[
+                        { value: 'TODO', label: 'To Do' },
+                        { value: 'IN_PROGRESS', label: 'In Progress' },
+                        { value: 'DONE', label: 'Done' },
+                    ]}
+                />
+            ),
         },
         {
             title: 'Mức độ',
             dataIndex: 'priority',
             key: 'priority',
-            render: (priority: string) => {
+            render: (priority) => {
                 const color = priority === 'High' ? 'red' : priority === 'Medium' ? 'orange' : 'blue';
                 return <Tag color={color} variant="outlined">{priority}</Tag>;
             },
@@ -53,7 +82,7 @@ export const Tasks: React.FC = () => {
         {
             title: 'Hành động',
             key: 'action',
-            render: (_: any, record: ITask) => (
+            render: (_, record) => (
                 <Space size="middle">
                     <Button type="text" icon={<EditOutlined />} onClick={() => console.log('Edit', record.id)} />
                     <Button type="text" danger icon={<DeleteOutlined />} />
